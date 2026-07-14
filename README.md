@@ -42,7 +42,7 @@
 将本仓库克隆或复制到 Codex 技能目录。Windows PowerShell 示例：
 
 ```powershell
-git clone https://github.com/zyx3721/lag-diagnosis.git "$env:USERPROFILE\.codex\skills\lag-diagnosis"
+git clone https://github.com/zyx3721/lag-diagnosis-skills.git "$env:USERPROFILE\.codex\skills\lag-diagnosis-skills"
 ```
 
 发布时应确保实际安装目录与脚本引用路径一致。若保留上述目录名，技能内的脚本路径无需调整。
@@ -50,7 +50,7 @@ git clone https://github.com/zyx3721/lag-diagnosis.git "$env:USERPROFILE\.codex\
 macOS Terminal 示例：
 
 ```bash
-git clone https://github.com/zyx3721/lag-diagnosis.git "$HOME/.codex/skills/lag-diagnosis"
+git clone https://github.com/zyx3721/lag-diagnosis-skills.git "$HOME/.codex/skills/lag-diagnosis-skills"
 ```
 
 ## 使用方式
@@ -77,25 +77,25 @@ git clone https://github.com/zyx3721/lag-diagnosis.git "$HOME/.codex/skills/lag-
 技能会先识别操作系统，再使用对应的随附只读采集器。Windows 默认采集 3 秒性能样本和最近 2 小时的关键事件，并将结果写为 JSON：
 
 ```powershell
-& "$env:USERPROFILE\.codex\skills\lag-diagnosis\scripts\Get-WindowsLagSnapshot.ps1" -JsonPath ".\windows-lag-snapshot.json"
+& "$env:USERPROFILE\.codex\skills\lag-diagnosis-skills\scripts\Get-WindowsLagSnapshot.ps1" -JsonPath ".\windows-lag-snapshot.json"
 ```
 
 如果卡顿是间歇性的，应在现象出现时采样，或将采样窗口提高到 8 至 10 秒：
 
 ```powershell
-& "$env:USERPROFILE\.codex\skills\lag-diagnosis\scripts\Get-WindowsLagSnapshot.ps1" -SampleSeconds 10 -JsonPath ".\windows-lag-snapshot.json"
+& "$env:USERPROFILE\.codex\skills\lag-diagnosis-skills\scripts\Get-WindowsLagSnapshot.ps1" -SampleSeconds 10 -JsonPath ".\windows-lag-snapshot.json"
 ```
 
 macOS 使用内置 Bash 3.2 和系统自带的 `sysctl`、`vm_stat`、`ps`、`df`、`netstat`、`launchctl`、`log`：
 
 ```bash
-bash "$HOME/.codex/skills/lag-diagnosis/scripts/Get-MacOSLagSnapshot.sh" --json-path ./macos-lag-snapshot.json
+bash "$HOME/.codex/skills/lag-diagnosis-skills/scripts/Get-MacOSLagSnapshot.sh" --json-path ./macos-lag-snapshot.json
 ```
 
 卡顿间歇出现时：
 
 ```bash
-bash "$HOME/.codex/skills/lag-diagnosis/scripts/Get-MacOSLagSnapshot.sh" --sample-seconds 10 --json-path ./macos-lag-snapshot.json
+bash "$HOME/.codex/skills/lag-diagnosis-skills/scripts/Get-MacOSLagSnapshot.sh" --sample-seconds 10 --json-path ./macos-lag-snapshot.json
 ```
 
 ## Windows 采集脚本参数
@@ -190,4 +190,4 @@ bash ./scripts/Get-MacOSLagSnapshot.sh --sample-seconds 1 --top 3
 
 - **作者**：Jerion
 - **邮箱**：416685476@qq.com
-- **项目地址**：https://github.com/zyx3721/lag-diagnosis
+- **项目地址**：https://github.com/zyx3721/lag-diagnosis-skills
