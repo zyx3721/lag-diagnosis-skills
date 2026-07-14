@@ -1,6 +1,6 @@
-# Windows 卡顿诊断技能
+# Windows 与 macOS 卡顿诊断技能
 
-一个面向 Codex 的 Windows 性能诊断技能，用于分析电脑、桌面客户端、浏览器或开发平台出现的卡顿、无响应、频繁转圈、输入延迟、磁盘繁忙、内存不足和整体变慢问题。
+一个面向 Codex 的 Windows 与 macOS 性能诊断技能，用于分析电脑、桌面客户端、浏览器或开发平台出现的卡顿、无响应、频繁转圈、输入延迟、磁盘繁忙、内存不足和整体变慢问题。
 
 本项目的核心目标不是立刻结束进程或修改系统设置，而是先采集证据、判断瓶颈、说明不确定性，再给出按风险排序的处置建议。单个资源指标偏高不等于根因，诊断应优先寻找持续压力或多个相互印证的信号。
 
@@ -9,8 +9,8 @@
 - 电脑整体卡顿、卡死、启动或切换应用变慢。
 - 浏览器、桌面客户端、IDE、编译或开发平台频繁转圈、无响应或输入延迟。
 - CPU、内存、磁盘或网络占用异常，需要定位相关进程。
-- Windows Update、同步客户端、虚拟机、容器、杀毒扫描等后台任务影响性能。
-- 需要查看近期应用崩溃、存储超时、驱动或资源耗尽等系统事件。
+- Windows Update、macOS 系统更新或 Spotlight 索引、同步客户端、虚拟机、容器、杀毒扫描等后台任务影响性能。
+- 需要查看近期应用崩溃、存储超时、驱动、kernel panic 或资源耗尽等系统事件。
 
 ## 安全原则
 
@@ -18,7 +18,7 @@
 - 所有会改变机器状态的动作，都应先说明影响、可逆性和理由，并获得用户对该具体动作的批准。
 - 性能诊断、杀毒扫描、IDE 编译、虚拟机、容器、同步客户端和 Windows Update 可能只是暂时负载；先确认其是否与用户当时操作一致。
 - 不要仅凭进程名断言恶意或故障，也不要将单项高指标直接当作根因。
-- 出现磁盘 I/O 错误、控制器重置、持续蓝屏、硬件温度或风扇异常、疑似数据损坏时，先提醒用户备份重要数据。
+- 出现磁盘 I/O 错误、控制器重置、持续蓝屏、kernel panic、硬件温度或风扇异常、疑似数据损坏时，先提醒用户备份重要数据。
 
 ## 项目结构
 
@@ -26,59 +26,79 @@
 .
 ├── SKILL.md
 ├── scripts/
-│   └── Get-WindowsLagSnapshot.ps1
+│   ├── Get-WindowsLagSnapshot.ps1
+│   └── Get-MacOSLagSnapshot.sh
 └── evals/
     └── evals.json
 ```
 
 - `SKILL.md`：技能入口，定义触发说明、只读边界、性能判定方法、报告格式和后续处置原则。
 - `scripts/Get-WindowsLagSnapshot.ps1`：只读快照采集器，收集性能计数器、进程资源占用、卷空间、服务状态和近期关键事件，并输出 JSON。
-- `evals/evals.json`：三条技能评测用例，覆盖整机卡顿、单应用卡顿和磁盘或蓝屏高风险场景。
+- `scripts/Get-MacOSLagSnapshot.sh`：兼容 macOS 自带 Bash 3.2 的只读采集器，使用系统内置命令收集对应的 CPU、内存、卷空间、网络、进程、launchd 和统一日志证据。
+- `evals/evals.json`：评测用例，覆盖 Windows/macOS 整机卡顿、单应用卡顿和存储或系统崩溃高风险场景。
 
 ## 安装
 
-将本仓库克隆或复制到 Codex 技能目录，例如：
+将本仓库克隆或复制到 Codex 技能目录。Windows PowerShell 示例：
 
 ```powershell
-git clone https://github.com/zyx3721/windows-lag-diagnosis-skills.git "$env:USERPROFILE\.codex\skills\windows-lag-diagnosis"
+git clone https://github.com/zyx3721/lag-diagnosis.git "$env:USERPROFILE\.codex\skills\lag-diagnosis"
 ```
 
 发布时应确保实际安装目录与脚本引用路径一致。若保留上述目录名，技能内的脚本路径无需调整。
+
+macOS Terminal 示例：
+
+```bash
+git clone https://github.com/zyx3721/lag-diagnosis.git "$HOME/.codex/skills/lag-diagnosis"
+```
 
 ## 使用方式
 
 在 Codex 中提出类似请求即可触发该技能：
 
 ```text
-电脑这两天很卡，帮我找出是哪个进程拖慢了系统。
+我的 Windows 或 Mac 这两天很卡，帮我找出是哪个进程拖慢了系统。
 ```
 
 技能会将现象拆分为可验证的状态，并优先检查：
 
 | 类别 | 主要信号 | 高优先级线索 |
 | --- | --- | --- |
-| CPU | 总使用率、处理器队列、CPU 占用最高的进程 | CPU 持续约 85% 以上，或队列长度持续大于逻辑核心数 |
-| 内存 | 已提交内存比例、可用内存、大进程工作集 | 已提交内存约 85% 以上，或可用内存很低且工作集持续增长 |
-| 磁盘 | 传输延迟、磁盘队列、卷可用空间 | 延迟持续超过 50 ms、队列堆积，或系统盘剩余空间低于约 10% |
+| CPU | 总使用率、Windows 处理器队列、CPU 占用最高的进程 | CPU 持续约 85% 以上，或 Windows 队列长度持续大于逻辑核心数 |
+| 内存 | Windows 已提交内存比例；macOS 空闲、压缩和有线内存；大进程工作集 | Windows 已提交内存约 85% 以上，或 macOS 空闲内存很低且压缩内存持续增长 |
+| 磁盘 | Windows 传输延迟、磁盘队列、所有系统的卷可用空间 | Windows 延迟持续超过 50 ms、队列堆积，或任一系统盘剩余空间低于约 10%。macOS 不输出推断出的磁盘延迟。 |
 | 网络 | 总吞吐量、相关应用、症状范围 | 流量高且卡顿仅发生在联网操作中 |
 | 进程 | CPU、私有内存、工作集、I/O | 同一进程同时占用多种资源，且与用户操作相关 |
-| 系统 | 近期事件、服务状态、开机时长 | 存储超时、应用崩溃、驱动错误或资源耗尽事件与卡顿时间吻合 |
+| 系统 | 近期事件、服务或 launchd 状态、开机时长 | 存储超时、应用崩溃、驱动错误、kernel panic 或资源耗尽事件与卡顿时间吻合 |
 
 当只报告单个应用卡顿而整机指标正常时，应将范围收窄到该应用的日志、扩展、网络和配置，而不是包装为整机故障。
 
-技能会先使用随附的只读采集器。默认采集 3 秒性能样本和最近 2 小时的关键事件，并将结果写为 JSON：
+技能会先识别操作系统，再使用对应的随附只读采集器。Windows 默认采集 3 秒性能样本和最近 2 小时的关键事件，并将结果写为 JSON：
 
 ```powershell
-& "$env:USERPROFILE\.codex\skills\windows-lag-diagnosis\scripts\Get-WindowsLagSnapshot.ps1" -JsonPath ".\windows-lag-snapshot.json"
+& "$env:USERPROFILE\.codex\skills\lag-diagnosis\scripts\Get-WindowsLagSnapshot.ps1" -JsonPath ".\windows-lag-snapshot.json"
 ```
 
 如果卡顿是间歇性的，应在现象出现时采样，或将采样窗口提高到 8 至 10 秒：
 
 ```powershell
-& "$env:USERPROFILE\.codex\skills\windows-lag-diagnosis\scripts\Get-WindowsLagSnapshot.ps1" -SampleSeconds 10 -JsonPath ".\windows-lag-snapshot.json"
+& "$env:USERPROFILE\.codex\skills\lag-diagnosis\scripts\Get-WindowsLagSnapshot.ps1" -SampleSeconds 10 -JsonPath ".\windows-lag-snapshot.json"
 ```
 
-## 采集脚本参数
+macOS 使用内置 Bash 3.2 和系统自带的 `sysctl`、`vm_stat`、`ps`、`df`、`netstat`、`launchctl`、`log`：
+
+```bash
+bash "$HOME/.codex/skills/lag-diagnosis/scripts/Get-MacOSLagSnapshot.sh" --json-path ./macos-lag-snapshot.json
+```
+
+卡顿间歇出现时：
+
+```bash
+bash "$HOME/.codex/skills/lag-diagnosis/scripts/Get-MacOSLagSnapshot.sh" --sample-seconds 10 --json-path ./macos-lag-snapshot.json
+```
+
+## Windows 采集脚本参数
 
 | 参数 | 默认值 | 说明 |
 | --- | --- | --- |
@@ -88,6 +108,17 @@ git clone https://github.com/zyx3721/windows-lag-diagnosis-skills.git "$env:USER
 | `-EventLookbackHours` | `2` | 回溯读取关键系统与应用事件的小时数，取值为 1 至 72。 |
 
 脚本默认只读。若某个探针失败，会在 `probeErrors` 中记录缺失原因；它不代表对应系统状态正常。
+
+## macOS 采集脚本参数
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `--sample-seconds` | `3` | CPU 与网络采样窗口，取值为 1 至 30 秒。 |
+| `--top` | `12` | CPU、内存、网络、launchd 服务和日志结果中保留的前 N 项，取值为 1 至 50。 |
+| `--json-path` | 空 | 将 JSON 快照写入指定路径；未指定时仅输出到标准输出。 |
+| `--event-lookback-hours` | `2` | 回溯统一日志的小时数，取值为 1 至 72。 |
+
+macOS 采集器默认只读，不需要 Homebrew、Python 或管理员权限。`log show`、`launchctl` 或部分性能计数器若受系统版本、隐私权限或沙箱影响，会写入 `probeErrors`。为避免误导，脚本仅报告卷容量，不将 macOS 卷空间数据解释为磁盘延迟。
 
 ## 诊断流程
 
@@ -104,7 +135,7 @@ git clone https://github.com/zyx3721/windows-lag-diagnosis-skills.git "$env:USER
 输出应只包含有证据支持的结论，并使用以下结构：
 
 ```markdown
-# Windows 卡顿诊断
+# 设备卡顿诊断
 
 ## 摘要
 - 健康等级：正常 / 需关注 / 严重
@@ -123,7 +154,7 @@ git clone https://github.com/zyx3721/windows-lag-diagnosis-skills.git "$env:USER
 - 未采集到的探针、权限限制或不确定性；没有则写“无”。
 ```
 
-健康等级的建议口径：没有明显持续压力为“正常”；存在一个明确瓶颈或容量预警为“需关注”；持续资源饱和、磁盘或驱动错误、反复崩溃或系统接近无响应为“严重”。
+健康等级的建议口径：没有明显持续压力为“正常”；存在一个明确瓶颈或容量预警为“需关注”；持续资源饱和、磁盘或驱动错误、反复崩溃、kernel panic 线索或系统接近无响应为“严重”。
 
 ## 验证
 
@@ -135,7 +166,14 @@ Get-Content -Raw -Encoding UTF8 .\SKILL.md
 PowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Get-WindowsLagSnapshot.ps1 -SampleSeconds 1 -Top 3
 ```
 
-最后一条命令仅执行读取操作，并将 JSON 输出到终端。需要保存本地快照时，应使用 `-JsonPath`，但不要提交其中可能包含的本机进程名称、设备型号和事件消息。
+在 macOS 上可做以下检查：
+
+```bash
+bash -n ./scripts/Get-MacOSLagSnapshot.sh
+bash ./scripts/Get-MacOSLagSnapshot.sh --sample-seconds 1 --top 3
+```
+
+采集命令仅执行读取操作，并将 JSON 输出到终端。需要保存本地快照时，应使用 `-JsonPath` 或 `--json-path`，但不要提交其中可能包含的本机进程名称、设备型号和事件消息。
 
 ## 发布到 GitHub 前检查
 
@@ -152,4 +190,4 @@ PowerShell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Get-WindowsLagSnap
 
 - **作者**：Jerion
 - **邮箱**：416685476@qq.com
-- **项目地址**：https://github.com/zyx3721/windows-lag-diagnosis-skills
+- **项目地址**：https://github.com/zyx3721/lag-diagnosis

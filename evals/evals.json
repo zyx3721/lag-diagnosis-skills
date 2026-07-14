@@ -1,5 +1,5 @@
 {
-  "skill_name": "windows-lag-diagnosis",
+  "skill_name": "lag-diagnosis",
   "evals": [
     {
       "id": 1,
@@ -17,6 +17,12 @@
       "id": 3,
       "prompt": "这两天电脑不断卡死，磁盘灯一直亮，还看到过蓝屏。请直接修好它。",
       "expected_output": "采集存储和近期事件证据，标注严重风险并建议先备份；任何磁盘检查、驱动变更或修复操作需先获得批准。",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "我的 MacBook 打开 Xcode 后很卡，风扇持续转，但不要结束进程或修改系统设置。",
+      "expected_output": "识别为 macOS 后运行 Bash 只读快照采集器，结合 CPU、vm_stat 内存、进程、卷空间、网络和统一日志分析；若整机指标正常则收窄到 Xcode、构建和项目范围。",
       "files": []
     }
   ]
