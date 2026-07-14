@@ -1,6 +1,6 @@
-# Windows 与 macOS 卡顿诊断技能
+# 跨平台卡顿诊断技能
 
-一个面向 Codex 的 Windows 与 macOS 性能诊断技能，用于分析电脑、桌面客户端、浏览器或开发平台出现的卡顿、无响应、频繁转圈、输入延迟、磁盘繁忙、内存不足和整体变慢问题。
+一个面向 Codex 的 Windows、macOS 与 Linux 性能诊断技能，用于分析电脑、桌面客户端、浏览器、平台服务或开发平台出现的卡顿、无响应、频繁转圈、输入延迟、磁盘繁忙、内存不足和整体变慢问题。
 
 本项目的核心目标不是立刻结束进程或修改系统设置，而是先采集证据、判断瓶颈、说明不确定性，再给出按风险排序的处置建议。单个资源指标偏高不等于根因，诊断应优先寻找持续压力或多个相互印证的信号。
 
@@ -10,6 +10,7 @@
 - 浏览器、桌面客户端、IDE、编译或开发平台频繁转圈、无响应或输入延迟。
 - CPU、内存、磁盘或网络占用异常，需要定位相关进程。
 - Windows Update、macOS 系统更新或 Spotlight 索引、同步客户端、虚拟机、容器、杀毒扫描等后台任务影响性能。
+- Linux 平台服务超时或整体变慢，需要检查 load average、内存/交换空间、磁盘和网络 I/O、systemd 服务与 journal 事件。
 - 需要查看近期应用崩溃、存储超时、驱动、kernel panic 或资源耗尽等系统事件。
 
 ## 安全原则
@@ -28,6 +29,7 @@
 ├── scripts/
 │   ├── Get-WindowsLagSnapshot.ps1
 │   └── Get-MacOSLagSnapshot.sh
+│   └── Get-LinuxLagSnapshot.sh
 └── evals/
     └── evals.json
 ```
@@ -35,7 +37,8 @@
 - `SKILL.md`：技能入口，定义触发说明、只读边界、性能判定方法、报告格式和后续处置原则。
 - `scripts/Get-WindowsLagSnapshot.ps1`：只读快照采集器，收集性能计数器、进程资源占用、卷空间、服务状态和近期关键事件，并输出 JSON。
 - `scripts/Get-MacOSLagSnapshot.sh`：兼容 macOS 自带 Bash 3.2 的只读采集器，使用系统内置命令收集对应的 CPU、内存、卷空间、网络、进程、launchd 和统一日志证据。
-- `evals/evals.json`：评测用例，覆盖 Windows/macOS 整机卡顿、单应用卡顿和存储或系统崩溃高风险场景。
+- `scripts/Get-LinuxLagSnapshot.sh`：Linux 只读采集器，读取 `/proc`、进程、卷空间、systemd 与 journal 信息，诊断主机或平台服务的整体性能状态。
+- `evals/evals.json`：评测用例，覆盖 Windows/macOS/Linux 整机卡顿、单应用卡顿、平台服务卡顿和存储或系统崩溃高风险场景。
 
 ## 安装
 
@@ -53,6 +56,12 @@ macOS Terminal 示例：
 git clone https://github.com/zyx3721/lag-diagnosis-skills.git "$HOME/.codex/skills/lag-diagnosis-skills"
 ```
 
+Linux Shell 使用相同的克隆方式：
+
+```bash
+git clone https://github.com/zyx3721/lag-diagnosis-skills.git "$HOME/.codex/skills/lag-diagnosis-skills"
+```
+
 ## 使用方式
 
 在 Codex 中提出类似请求即可触发该技能：
@@ -65,12 +74,12 @@ git clone https://github.com/zyx3721/lag-diagnosis-skills.git "$HOME/.codex/skil
 
 | 类别 | 主要信号 | 高优先级线索 |
 | --- | --- | --- |
-| CPU | 总使用率、Windows 处理器队列、CPU 占用最高的进程 | CPU 持续约 85% 以上，或 Windows 队列长度持续大于逻辑核心数 |
-| 内存 | Windows 已提交内存比例；macOS 空闲、压缩和有线内存；大进程工作集 | Windows 已提交内存约 85% 以上，或 macOS 空闲内存很低且压缩内存持续增长 |
-| 磁盘 | Windows 传输延迟、磁盘队列、所有系统的卷可用空间 | Windows 延迟持续超过 50 ms、队列堆积，或任一系统盘剩余空间低于约 10%。macOS 不输出推断出的磁盘延迟。 |
+| CPU | 总使用率、Windows 处理器队列、Linux load average 与运行队列、CPU 占用最高的进程 | CPU 持续约 85% 以上，或队列/负载持续高于逻辑核心数 |
+| 内存 | Windows 已提交内存比例；macOS 空闲、压缩和有线内存；Linux 可用内存和交换空间；大进程工作集 | Windows 已提交内存约 85% 以上，或 macOS/Linux 可用内存很低且压缩/交换空间持续增长 |
+| 磁盘 | Windows 传输延迟、磁盘队列；Linux 读写速率与正在处理的 I/O；所有系统的卷可用空间 | Windows 延迟持续超过 50 ms、队列堆积，或任一系统盘剩余空间低于约 10%。macOS 不输出推断出的磁盘延迟。 |
 | 网络 | 总吞吐量、相关应用、症状范围 | 流量高且卡顿仅发生在联网操作中 |
 | 进程 | CPU、私有内存、工作集、I/O | 同一进程同时占用多种资源，且与用户操作相关 |
-| 系统 | 近期事件、服务或 launchd 状态、开机时长 | 存储超时、应用崩溃、驱动错误、kernel panic 或资源耗尽事件与卡顿时间吻合 |
+| 系统 | 近期事件、服务、launchd 或 systemd 状态、开机时长 | 存储超时、应用崩溃、驱动错误、kernel panic、Linux OOM 或资源耗尽事件与卡顿时间吻合 |
 
 当只报告单个应用卡顿而整机指标正常时，应将范围收窄到该应用的日志、扩展、网络和配置，而不是包装为整机故障。
 
@@ -98,6 +107,18 @@ bash "$HOME/.codex/skills/lag-diagnosis-skills/scripts/Get-MacOSLagSnapshot.sh" 
 bash "$HOME/.codex/skills/lag-diagnosis-skills/scripts/Get-MacOSLagSnapshot.sh" --sample-seconds 10 --json-path ./macos-lag-snapshot.json
 ```
 
+Linux 使用 Bash、`/proc`、`ps`、`df` 和可用的 `systemctl`/`journalctl`：
+
+```bash
+bash "$HOME/.codex/skills/lag-diagnosis-skills/scripts/Get-LinuxLagSnapshot.sh" --json-path ./linux-lag-snapshot.json
+```
+
+平台服务出现间歇性超时或卡顿时：
+
+```bash
+bash "$HOME/.codex/skills/lag-diagnosis-skills/scripts/Get-LinuxLagSnapshot.sh" --sample-seconds 10 --json-path ./linux-lag-snapshot.json
+```
+
 ## Windows 采集脚本参数
 
 | 参数 | 默认值 | 说明 |
@@ -119,6 +140,17 @@ bash "$HOME/.codex/skills/lag-diagnosis-skills/scripts/Get-MacOSLagSnapshot.sh" 
 | `--event-lookback-hours` | `2` | 回溯统一日志的小时数，取值为 1 至 72。 |
 
 macOS 采集器默认只读，不需要 Homebrew、Python 或管理员权限。`log show`、`launchctl` 或部分性能计数器若受系统版本、隐私权限或沙箱影响，会写入 `probeErrors`。为避免误导，脚本仅报告卷容量，不将 macOS 卷空间数据解释为磁盘延迟。
+
+## Linux 采集脚本参数
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `--sample-seconds` | `3` | CPU、磁盘和网络的采样窗口，取值为 1 至 30 秒。 |
+| `--top` | `12` | 进程、服务和日志结果中保留的前 N 项，取值为 1 至 50。 |
+| `--json-path` | 空 | 将 JSON 快照写入指定路径；未指定时仅输出到标准输出。 |
+| `--event-lookback-hours` | `2` | 回溯 journal 或内核日志的小时数，取值为 1 至 72。 |
+
+Linux 采集器默认只读。它以 `/proc` 为主，报告 CPU、load average、内存、swap、磁盘和网络速率、进程及可用的服务/日志信息。容器或非 systemd 环境可能无法列出完整服务或日志，相关缺口会写入 `probeErrors`；不要因此将服务视为正常。
 
 ## 诊断流程
 
@@ -173,6 +205,13 @@ bash -n ./scripts/Get-MacOSLagSnapshot.sh
 bash ./scripts/Get-MacOSLagSnapshot.sh --sample-seconds 1 --top 3
 ```
 
+在 Linux 上可做以下检查：
+
+```bash
+bash -n ./scripts/Get-LinuxLagSnapshot.sh
+bash ./scripts/Get-LinuxLagSnapshot.sh --sample-seconds 1 --top 3
+```
+
 采集命令仅执行读取操作，并将 JSON 输出到终端。需要保存本地快照时，应使用 `-JsonPath` 或 `--json-path`，但不要提交其中可能包含的本机进程名称、设备型号和事件消息。
 
 ## 发布到 GitHub 前检查
@@ -184,7 +223,9 @@ bash ./scripts/Get-MacOSLagSnapshot.sh --sample-seconds 1 --top 3
 
 ## 许可证
 
-当前仓库尚未包含许可证文件。对外发布或允许复用前，应明确添加并声明适用许可证。
+本项目采用 [MIT License](LICENSE)。允许使用、复制、修改、分发和再授权，但须保留许可证与版权声明。
+
+该工具按“原样”提供，不附带任何形式的担保。诊断结果仅用于辅助判断；执行服务重启、清理、驱动/内核变更、磁盘检查或其他会改变系统状态的操作前，仍应先评估影响并获得明确批准。
 
 ## 联系方式
 

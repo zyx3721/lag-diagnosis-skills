@@ -24,6 +24,12 @@
       "prompt": "我的 MacBook 打开 Xcode 后很卡，风扇持续转，但不要结束进程或修改系统设置。",
       "expected_output": "识别为 macOS 后运行 Bash 只读快照采集器，结合 CPU、vm_stat 内存、进程、卷空间、网络和统一日志分析；若整机指标正常则收窄到 Xcode、构建和项目范围。",
       "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Linux 服务器上的平台服务频繁超时，整机也变慢。先排查整体情况，不要重启服务。",
+      "expected_output": "识别为 Linux 后运行只读快照采集器，结合 /proc 的 CPU、load average、可用内存、swap、磁盘和网络速率、进程、systemd 服务与 journal 事件交叉判断；任何重启或配置变更均需批准。",
+      "files": []
     }
   ]
 }
