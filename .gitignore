@@ -1,0 +1,3 @@
+# Local diagnostic snapshots can contain process names, device details, and event messages.
+windows-lag-snapshot.json
+*-lag-snapshot.json
